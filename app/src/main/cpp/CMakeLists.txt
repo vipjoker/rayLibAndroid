@@ -1,44 +1,34 @@
-# For more information about using CMake with Android Studio, read the
-# documentation: https://d.android.com/studio/projects/add-native-code.html
-
-# Set the minimum required version of CMake
 cmake_minimum_required(VERSION 3.22.1)
-
-# Set standards for C and C++
-set(CMAKE_C_STANDARD 99)
-set(CMAKE_CXX_STANDARD 11)
-
-# Set the project name based on the name given on the gradle.properties
 project("${APP_LIB_NAME}")
 
-# Include raylib and raymob as a subdirectories
-add_subdirectory(${CMAKE_SOURCE_DIR}/deps/raylib)
+set(CMAKE_C_STANDARD 99)
+
+add_library(raylib STATIC IMPORTED)
+
+
+
+set_target_properties(raylib PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/raylib/include"
+        INTERFACE_LINK_LIBRARIES "android;log;EGL;GLESv2;OpenSLES;m;atomic;dl"
+        INTERFACE_LINK_OPTIONS "-Wl,--wrap=fopen"
+        IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/../jniLibs/${ANDROID_ABI}/libraylib.a"
+)
+
+# Subdirectories
 add_subdirectory(${CMAKE_SOURCE_DIR}/deps/raymob)
 
-# Fetch all source files for your project (recursively), excluding 'deps' source files
+# App source files
 file(GLOB_RECURSE SOURCES "${CMAKE_SOURCE_DIR}/*.c" "${CMAKE_SOURCE_DIR}/*.cpp")
 list(FILTER SOURCES EXCLUDE REGEX "${CMAKE_SOURCE_DIR}/deps/.*")
+list(APPEND SOURCES "${ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c")
 
-# Add headers directory for android_native_app_glue.c
-include_directories(${ANDROID_NDK}/sources/android/native_app_glue/)
-
-# Add android_native_app_glue.c to the source files
-list(APPEND SOURCES ${ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c)
-
-# Create a shared library with game source files
 add_library(${APP_LIB_NAME} SHARED ${SOURCES})
 
-# Define compiler macros for the library
 target_compile_definitions(${APP_LIB_NAME} PRIVATE PLATFORM_ANDROID)
 
-# Apply flags depending on the build type
-if(CMAKE_BUILD_TYPE MATCHES "Debug")
-    target_compile_definitions(${APP_LIB_NAME} PRIVATE _DEBUG DEBUG)
-endif()
+target_include_directories(${APP_LIB_NAME} PRIVATE
+        "${ANDROID_NDK}/sources/android/native_app_glue"
+        "${CMAKE_SOURCE_DIR}/deps/raymob"
+)
 
-# Include raylib and raymob header files
-target_include_directories(${APP_LIB_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/deps/raylib")
-target_include_directories(${APP_LIB_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/deps/raymob")
-
-# Link required libraries to the native application
 target_link_libraries(${APP_LIB_NAME} raylib raymoblib)
